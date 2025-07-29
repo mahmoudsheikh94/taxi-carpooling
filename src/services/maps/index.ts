@@ -1,6 +1,7 @@
 export {
   loadGoogleMapsApi,
   isGoogleMapsLoaded,
+  isGoogleMapsAvailable,
   getCurrentLocation,
   calculateDistance,
   getRoute,

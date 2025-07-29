@@ -6,8 +6,8 @@ const envSchema = z.object({
   VITE_SUPABASE_URL: z.string().url('Invalid Supabase URL').min(1, 'Supabase URL is required'),
   VITE_SUPABASE_ANON_KEY: z.string().min(1, 'Supabase anon key is required'),
   
-  // Google Maps API
-  VITE_GOOGLE_MAPS_API_KEY: z.string().min(1, 'Google Maps API key is required'),
+  // Google Maps API (Optional - app will work without maps functionality)
+  VITE_GOOGLE_MAPS_API_KEY: z.string().optional(),
   
   // Application Configuration
   VITE_APP_URL: z.string().url('Invalid app URL').min(1, 'App URL is required'),
@@ -84,6 +84,7 @@ export const features = {
   enablePWA: isProd,
   enableDevTools: isDev,
   enableTestIds: isDev || isTest,
+  enableGoogleMaps: !!env.VITE_GOOGLE_MAPS_API_KEY && env.VITE_GOOGLE_MAPS_API_KEY !== 'your_google_maps_api_key',
 } as const;
 
 // API Configuration
@@ -150,8 +151,8 @@ export function checkRequiredServices() {
     },
     {
       name: 'Google Maps API Key',
-      check: () => !!env.VITE_GOOGLE_MAPS_API_KEY,
-      required: true,
+      check: () => !!env.VITE_GOOGLE_MAPS_API_KEY && env.VITE_GOOGLE_MAPS_API_KEY !== 'your_google_maps_api_key',
+      required: false,
     },
     {
       name: 'Sentry DSN',

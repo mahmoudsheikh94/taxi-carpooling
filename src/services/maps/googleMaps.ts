@@ -1,9 +1,9 @@
 import { Loader } from '@googlemaps/js-api-loader';
-import { apiConfig, isProd } from '../../config/env';
+import { apiConfig, isProd, features } from '../../config/env';
 
-// Google Maps loader configuration
-const loader = new Loader({
-  apiKey: apiConfig.googleMaps.apiKey,
+// Google Maps loader configuration (only if API key is available)
+const loader = features.enableGoogleMaps ? new Loader({
+  apiKey: apiConfig.googleMaps.apiKey!,
   version: 'weekly',
   libraries: ['places', 'geometry'],
   language: 'en',
@@ -13,19 +13,24 @@ const loader = new Loader({
     nonce: 'google-maps-nonce',
     retries: 3,
   }),
-});
+}) : null;
 
 // Global reference to Google Maps API
 let googleMapsApi: typeof google.maps | null = null;
 
 // Load Google Maps API
-export const loadGoogleMapsApi = async (): Promise<typeof google.maps> => {
+export const loadGoogleMapsApi = async (): Promise<any> => {
+  if (!features.enableGoogleMaps || !loader) {
+    throw new Error('Google Maps API is not available. Please configure VITE_GOOGLE_MAPS_API_KEY.');
+  }
+
   if (googleMapsApi) {
     return googleMapsApi;
   }
 
   try {
-    googleMapsApi = await loader.load();
+    await loader.load();
+    googleMapsApi = google.maps;
     return googleMapsApi;
   } catch (error) {
     console.error('Failed to load Google Maps API:', error);
@@ -35,7 +40,12 @@ export const loadGoogleMapsApi = async (): Promise<typeof google.maps> => {
 
 // Check if Google Maps API is loaded
 export const isGoogleMapsLoaded = (): boolean => {
-  return googleMapsApi !== null && typeof google !== 'undefined';
+  return features.enableGoogleMaps && googleMapsApi !== null && typeof google !== 'undefined';
+};
+
+// Check if Google Maps is available
+export const isGoogleMapsAvailable = (): boolean => {
+  return features.enableGoogleMaps;
 };
 
 // Get current location using browser geolocation

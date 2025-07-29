@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { loadGoogleMapsApi, DEFAULT_MAP_CONFIG } from '../../services/maps';
+import { loadGoogleMapsApi, DEFAULT_MAP_CONFIG, isGoogleMapsAvailable } from '../../services/maps';
 import { LoadingSpinner } from '../ui';
+import { features } from '../../config/env';
 
 interface GoogleMapProps {
   center?: google.maps.LatLngLiteral;
@@ -27,6 +28,28 @@ export function GoogleMap({
   className = '',
   height = '400px',
 }: GoogleMapProps) {
+  // Show fallback if Google Maps is not available
+  if (!features.enableGoogleMaps) {
+    return (
+      <div 
+        className={`flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border-2 border-dashed border-blue-300 ${className}`}
+        style={{ height }}
+      >
+        <div className="text-center p-6">
+          <div className="w-12 h-12 bg-blue-200 rounded-full flex items-center justify-center mx-auto mb-3">
+            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <p className="text-blue-800 font-medium mb-1">Map View Unavailable</p>
+          <p className="text-blue-600 text-sm">Google Maps API key not configured</p>
+          <p className="text-blue-500 text-xs mt-2">The app works without maps functionality</p>
+        </div>
+      </div>
+    );
+  }
+
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [isLoading, setIsLoading] = useState(true);
