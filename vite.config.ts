@@ -140,7 +140,11 @@ export default defineConfig(({ mode }) => {
     
     // Environment variables
     define: {
-      __BUILD_VERSION__: JSON.stringify(process.env.VITE_BUILD_VERSION || 'development'),
+      __BUILD_VERSION__: JSON.stringify(
+        process.env.VITE_BUILD_VERSION || 
+        process.env.VERCEL_GIT_COMMIT_SHA?.substring(0, 7) ||
+        `dev-${Date.now()}`
+      ),
       __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
     },
     

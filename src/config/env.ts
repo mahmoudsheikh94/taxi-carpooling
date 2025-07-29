@@ -23,7 +23,7 @@ const envSchema = z.object({
   DEV: z.boolean().optional(),
   PROD: z.boolean().optional(),
   
-  // Build Configuration
+  // Build Configuration (Optional - auto-generated if not provided)
   VITE_BUILD_VERSION: z.string().optional(),
   VITE_BUILD_TIME: z.string().optional(),
 });
@@ -108,10 +108,12 @@ export const apiConfig = {
   },
 } as const;
 
-// Build information
+// Build information with fallbacks
 export const buildInfo = {
-  version: env.VITE_BUILD_VERSION || 'unknown',
-  buildTime: env.VITE_BUILD_TIME || 'unknown',
+  version: env.VITE_BUILD_VERSION || 
+    (typeof __BUILD_VERSION__ !== 'undefined' ? __BUILD_VERSION__ : 'development'),
+  buildTime: env.VITE_BUILD_TIME || 
+    (typeof __BUILD_TIME__ !== 'undefined' ? __BUILD_TIME__ : new Date().toISOString()),
   environment: env.NODE_ENV,
 } as const;
 
