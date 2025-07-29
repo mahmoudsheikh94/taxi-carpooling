@@ -1,26 +1,59 @@
 import { Loader } from '@googlemaps/js-api-loader';
-import { apiConfig, isProd, features } from '../../config/env';
 
-// Google Maps loader configuration (only if API key is available)
-const loader = features.enableGoogleMaps ? new Loader({
-  apiKey: apiConfig.googleMaps.apiKey!,
-  version: 'weekly',
-  libraries: ['places', 'geometry'],
-  language: 'en',
-  region: 'US',
-  // Add additional configuration for production
-  ...(isProd && {
-    nonce: 'google-maps-nonce',
-    retries: 3,
-  }),
-}) : null;
+// Simple feature flag based on environment variable only
+// This avoids circular dependency with env.ts
+const isGoogleMapsEnabled = (): boolean => {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  return !!(apiKey && apiKey !== 'your_google_maps_api_key');
+};
+
+// Google Maps configuration
+const getGoogleMapsConfig = () => {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const isProd = import.meta.env.PROD;
+  
+  if (!apiKey || apiKey === 'your_google_maps_api_key') {
+    return null;
+  }
+
+  return {
+    apiKey,
+    version: 'weekly' as const,
+    libraries: ['places', 'geometry'] as const,
+    language: 'en',
+    region: 'US',
+    // Add additional configuration for production
+    ...(isProd && {
+      nonce: 'google-maps-nonce',
+      retries: 3,
+    }),
+  };
+};
+
+// Lazy loader initialization
+let loader: Loader | null = null;
+const getLoader = (): Loader | null => {
+  if (loader) {
+    return loader;
+  }
+
+  const config = getGoogleMapsConfig();
+  if (!config) {
+    return null;
+  }
+
+  loader = new Loader(config);
+  return loader;
+};
 
 // Global reference to Google Maps API
 let googleMapsApi: typeof google.maps | null = null;
 
 // Load Google Maps API
 export const loadGoogleMapsApi = async (): Promise<any> => {
-  if (!features.enableGoogleMaps || !loader) {
+  const loader = getLoader();
+  
+  if (!loader) {
     throw new Error('Google Maps API is not available. Please configure VITE_GOOGLE_MAPS_API_KEY.');
   }
 
@@ -40,12 +73,12 @@ export const loadGoogleMapsApi = async (): Promise<any> => {
 
 // Check if Google Maps API is loaded
 export const isGoogleMapsLoaded = (): boolean => {
-  return features.enableGoogleMaps && googleMapsApi !== null && typeof google !== 'undefined';
+  return isGoogleMapsEnabled() && googleMapsApi !== null && typeof google !== 'undefined';
 };
 
 // Check if Google Maps is available
 export const isGoogleMapsAvailable = (): boolean => {
-  return features.enableGoogleMaps;
+  return isGoogleMapsEnabled();
 };
 
 // Get current location using browser geolocation

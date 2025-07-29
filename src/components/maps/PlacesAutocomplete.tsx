@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadGoogleMapsApi, isGoogleMapsAvailable } from '../../services/maps';
 import { Input } from '../ui';
-import { features } from '../../config/env';
 import type { LocationFormData } from '../../utils/validations';
 
 interface PlacesAutocompleteProps {
@@ -35,7 +34,7 @@ export function PlacesAutocomplete({
 
   useEffect(() => {
     // Skip initialization if Google Maps is not available
-    if (!features.enableGoogleMaps) {
+    if (!isGoogleMapsAvailable()) {
       return;
     }
 

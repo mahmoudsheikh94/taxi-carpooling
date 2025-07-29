@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadGoogleMapsApi, DEFAULT_MAP_CONFIG, isGoogleMapsAvailable } from '../../services/maps';
 import { LoadingSpinner } from '../ui';
-import { features } from '../../config/env';
 
 interface GoogleMapProps {
   center?: google.maps.LatLngLiteral;
@@ -29,7 +28,7 @@ export function GoogleMap({
   height = '400px',
 }: GoogleMapProps) {
   // Show fallback if Google Maps is not available
-  if (!features.enableGoogleMaps) {
+  if (!isGoogleMapsAvailable()) {
     return (
       <div 
         className={`flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border-2 border-dashed border-blue-300 ${className}`}
