@@ -1,5 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
+/* Tailwind CSS v4 - This must be imported first */
+@import "tailwindcss";
+
 /* PWA-specific styles */
 @import './styles/pwa.css';
 
