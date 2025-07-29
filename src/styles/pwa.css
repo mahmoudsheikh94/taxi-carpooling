@@ -1,0 +1,97 @@
+/* PWA-specific styles */
+
+/* Hide elements when running as installed PWA */
+.pwa-installed .install-banner {
+  display: none !important;
+}
+
+.pwa-installed .navbar-install-btn {
+  display: none !important;
+}
+
+/* PWA safe areas for notched devices */
+@supports (padding: max(0px)) {
+  .pwa-safe-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  
+  .pwa-safe-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  
+  .pwa-safe-left {
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+  
+  .pwa-safe-right {
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* Standalone mode adjustments */
+@media all and (display-mode: standalone) {
+  :root {
+    --pwa-status-bar-height: 0px;
+  }
+  
+  /* Adjust layout for iOS Safari standalone mode */
+  .ios-standalone-adjust {
+    padding-top: var(--pwa-status-bar-height);
+  }
+}
+
+/* iOS-specific adjustments */
+@supports (padding: max(0px)) and (-webkit-touch-callout: none) {
+  .ios-pwa-navbar {
+    padding-top: max(0.5rem, env(safe-area-inset-top));
+  }
+  
+  .ios-pwa-content {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Smooth transitions for PWA state changes */
+.pwa-transition {
+  transition: all 0.3s ease-in-out;
+}
+
+/* Offline indicator styles */
+.offline-indicator {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Install prompt animations */
+.install-prompt-enter {
+  animation: fadeInScale 0.3s ease-out;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Touch-friendly button sizing for PWA */
+@media (any-pointer: coarse) {
+  .pwa-touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

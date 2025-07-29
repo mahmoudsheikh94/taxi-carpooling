@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- App Metadata -->
+    <title>Taxi Carpooling - Share Rides, Save Money</title>
+    <meta name="description" content="Find and share taxi rides with compatible travelers. Save money, reduce traffic, and make new connections." />
+    <meta name="keywords" content="taxi, carpool, ride sharing, transportation, save money" />
+    <meta name="author" content="Taxi Carpooling Team" />
+    
+    <!-- PWA Configuration -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#3B82F6" />
+    <meta name="background-color" content="#ffffff" />
+    
+    <!-- App Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/icons/safari-pinned-tab.svg" color="#3B82F6" />
+    
+    <!-- iOS PWA Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="TaxiPool" />
+    
+    <!-- Windows Tile -->
+    <meta name="msapplication-TileColor" content="#3B82F6" />
+    <meta name="msapplication-TileImage" content="/icons/mstile-144x144.png" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
+    
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Taxi Carpooling - Share Rides, Save Money" />
+    <meta property="og:description" content="Find and share taxi rides with compatible travelers. Save money, reduce traffic, and make new connections." />
+    <meta property="og:image" content="/icons/og-image.png" />
+    <meta property="og:url" content="https://taxi-carpooling.vercel.app" />
+    <meta property="og:site_name" content="Taxi Carpooling" />
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Taxi Carpooling - Share Rides, Save Money" />
+    <meta name="twitter:description" content="Find and share taxi rides with compatible travelers. Save money, reduce traffic, and make new connections." />
+    <meta name="twitter:image" content="/icons/og-image.png" />
+    
+    <!-- Security -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    
+    <!-- Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://maps.googleapis.com" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- PWA Install Detection -->
+    <script>
+      // Detect if running as PWA
+      if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+        document.documentElement.classList.add('pwa-installed');
+      }
+    </script>
+  </body>
+</html>

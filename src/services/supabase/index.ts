@@ -1,0 +1,18 @@
+export { supabase, handleSupabaseError } from './client';
+export { authService } from './auth';
+export { tripService } from './trips';
+export { matchService } from './matches';
+export { userPreferencesService } from './userPreferences';
+export { chatService } from './chat';
+export { typingStatusService } from './typing';
+export { requestService } from './requests';
+export { reviewService } from './reviews';
+export type { Database } from './types';
+export type { AuthCredentials, SignUpData, AuthResponse } from './auth';
+export type { CreateTripData, TripResponse, TripsResponse } from './trips';
+export type { CreateMatchData, MatchResponse, MatchesResponse, MatchFilters } from './matches';
+export type { CreateUserPreferencesData, UserPreferencesResponse } from './userPreferences';
+export type { CreateChatRoomData, ChatRoomResponse, ChatRoomsResponse, CreateMessageData, MessageResponse, MessagesResponse, ChatFilters, MessageFilters } from './chat';
+export type { TypingStatus, UserStatus } from './typing';
+export type { CreateRequestData, UpdateRequestData, RequestFilters, RequestResponse, RequestsResponse } from './requests';
+export type { CreateReviewData, UpdateReviewData, ReviewFilters, ReviewResponse, ReviewsResponse, UserRatingStats } from './reviews';
