@@ -87,16 +87,7 @@ export default defineConfig(({ mode }) => {
       },
       
       // Minification
-      minify: isProd ? 'terser' : false,
-      terserOptions: isProd ? {
-        compress: {
-          drop_console: true,
-          drop_debugger: true,
-        },
-        mangle: {
-          safari10: true,
-        },
-      } : undefined,
+      minify: isProd ? 'esbuild' : false,
       
       // CSS code splitting
       cssCodeSplit: true,
@@ -174,7 +165,7 @@ export default defineConfig(({ mode }) => {
     // Worker configuration
     worker: {
       format: 'es',
-      plugins: [],
+      plugins: () => [],
     },
   };
 });
