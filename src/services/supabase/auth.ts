@@ -155,6 +155,8 @@ export const authService = {
 
   // Sign in with email and password
   async signIn(credentials: AuthCredentials): Promise<AuthResponse> {
+    console.log('🔄 Starting login process for:', credentials.email);
+    
     try {
       const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
         email: credentials.email,
@@ -162,33 +164,109 @@ export const authService = {
       });
 
       if (signInError) {
+        console.error('❌ Authentication failed:', signInError);
         return { user: null, error: handleSupabaseError(signInError) };
       }
 
       if (!authData.user) {
+        console.error('❌ No user data returned from authentication');
         return { user: null, error: 'Sign in failed' };
       }
 
-      // Get user profile data
-      const { data: profile, error: profileError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authData.user.id)
-        .single();
+      console.log('✅ Authentication successful for user:', authData.user.id);
 
-      if (profileError || !profile) {
-        return { user: null, error: 'Failed to load user profile' };
+      // Get user profile data with comprehensive error handling
+      try {
+        console.log('🔍 Fetching user profile...');
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (profileError) {
+          console.error('❌ Profile fetch error:', {
+            code: profileError.code,
+            message: profileError.message,
+            details: profileError
+          });
+
+          // If profile doesn't exist (PGRST116), create it
+          if (profileError.code === 'PGRST116') {
+            console.log('🔄 Profile not found, creating fallback profile...');
+            const fallbackProfile = await this.createFallbackProfile(
+              authData.user.id, 
+              authData.user.email!, 
+              authData.user.user_metadata?.name || 'User'
+            );
+            
+            if (fallbackProfile) {
+              console.log('✅ Fallback profile created successfully');
+              return { user: fallbackProfile, error: null };
+            }
+          }
+
+          return { user: null, error: 'Unable to load your profile. Please try again or contact support.' };
+        }
+
+        if (!profile) {
+          console.error('❌ Profile data is null despite no error');
+          return { user: null, error: 'Profile data not found' };
+        }
+
+        console.log('✅ User profile loaded successfully');
+
+        // Update last login (don't fail login if this fails)
+        try {
+          await supabase
+            .from('users')
+            .update({ last_login_at: new Date().toISOString() })
+            .eq('id', authData.user.id);
+          console.log('✅ Last login timestamp updated');
+        } catch (updateError) {
+          console.warn('⚠️ Failed to update last login timestamp:', updateError);
+          // Don't fail the login for this
+        }
+
+        return { user: profile as User, error: null };
+
+      } catch (profileFetchError) {
+        console.error('❌ Unexpected error fetching profile:', profileFetchError);
+        return { user: null, error: 'Failed to load user profile. Please try again.' };
       }
 
-      // Update last login
-      await supabase
-        .from('users')
-        .update({ last_login_at: new Date().toISOString() })
-        .eq('id', authData.user.id);
-
-      return { user: profile as User, error: null };
     } catch (error) {
-      return { user: null, error: handleSupabaseError(error) };
+      console.error('❌ Unexpected error during login:', error);
+      return { user: null, error: 'An unexpected error occurred during login. Please try again.' };
+    }
+  },
+
+  // Helper method to create fallback profile during login
+  async createFallbackProfile(userId: string, email: string, name: string): Promise<User | null> {
+    try {
+      console.log('🔧 Creating fallback profile for user:', userId);
+      
+      const { data: newProfile, error: createError } = await supabase
+        .from('users')
+        .insert({
+          id: userId,
+          email: email,
+          name: name,
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('❌ Failed to create fallback profile:', createError);
+        return null;
+      }
+
+      console.log('✅ Fallback profile created:', newProfile);
+      return newProfile as User;
+
+    } catch (error) {
+      console.error('❌ Error creating fallback profile:', error);
+      return null;
     }
   },
 
@@ -265,17 +343,41 @@ export const authService = {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       
       if (!authUser) {
+        console.log('🔍 No authenticated user found');
         return null;
       }
 
-      const { data: profile } = await supabase
+      console.log('🔍 Getting current user profile for:', authUser.id);
+
+      const { data: profile, error: profileError } = await supabase
         .from('users')
         .select('*')
         .eq('id', authUser.id)
         .single();
 
+      if (profileError) {
+        console.error('❌ Error fetching current user profile:', {
+          code: profileError.code,
+          message: profileError.message
+        });
+        
+        // If profile doesn't exist, try to create it
+        if (profileError.code === 'PGRST116') {
+          console.log('🔄 Current user profile not found, creating fallback...');
+          return await this.createFallbackProfile(
+            authUser.id,
+            authUser.email!,
+            authUser.user_metadata?.name || 'User'
+          );
+        }
+        
+        return null;
+      }
+
+      console.log('✅ Current user profile loaded successfully');
       return profile as User | null;
-    } catch {
+    } catch (error) {
+      console.error('❌ Error getting current user:', error);
       return null;
     }
   },
