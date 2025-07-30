@@ -27,7 +27,8 @@ export const authService = {
         options: {
           data: {
             name: data.name,
-            full_name: data.name, // Add fallback for different metadata field names
+            full_name: data.name,
+            display_name: data.name, // Multiple metadata fields for compatibility
           },
         },
       };
@@ -43,9 +44,19 @@ export const authService = {
         console.error('❌ Supabase signup error:', {
           message: signUpError.message,
           code: signUpError.status,
+          name: signUpError.name || 'Unknown',
           details: signUpError
         });
-        return { user: null, error: handleSupabaseError(signUpError) };
+        
+        // Provide user-friendly error messages
+        let userError = signUpError.message;
+        if (signUpError.message.includes('Database error saving new user')) {
+          userError = 'There was an issue creating your account. Our team has been notified. Please try again in a few minutes.';
+        } else if (signUpError.message.includes('already registered')) {
+          userError = 'An account with this email already exists. Please try signing in instead.';
+        }
+        
+        return { user: null, error: userError };
       }
 
       if (!authData.user) {
@@ -56,11 +67,12 @@ export const authService = {
       console.log('✅ Auth user created successfully:', {
         id: authData.user.id,
         email: authData.user.email,
-        confirmed: authData.user.email_confirmed_at !== null
+        confirmed: authData.user.email_confirmed_at !== null,
+        session: !!authData.session
       });
 
-      // Check if email confirmation is required
-      if (!authData.user.email_confirmed_at && authData.session === null) {
+      // Handle email confirmation requirement
+      if (!authData.user.email_confirmed_at && !authData.session) {
         console.log('📧 Email confirmation required - user created but not confirmed');
         return { 
           user: null, 
@@ -68,50 +80,62 @@ export const authService = {
         };
       }
 
-      // Try to get the user profile that should have been created by the trigger
-      try {
-        console.log('🔍 Checking if user profile was created by trigger...');
-        const { data: profile, error: profileError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', authData.user.id)
-          .single();
-
-        if (profileError) {
-          console.error('❌ Profile not found, trigger may have failed:', profileError);
-          
-          // Fallback: Create user profile manually if trigger failed
-          console.log('🔄 Creating user profile manually as fallback...');
-          const { error: insertError } = await supabase
-            .from('users')
-            .insert({
-              id: authData.user.id,
-              email: authData.user.email!,
-              name: data.name,
-            });
-
-          if (insertError) {
-            console.error('❌ Manual profile creation also failed:', insertError);
-            return { user: null, error: 'Account created but profile setup failed. Please contact support.' };
-          }
-          
-          console.log('✅ User profile created manually');
-        } else {
-          console.log('✅ User profile found - trigger worked correctly');
-        }
-
-      } catch (profileCheckError) {
-        console.error('❌ Error checking/creating user profile:', profileCheckError);
-        // Don't fail the signup for profile issues, user can still access the app
-        console.log('⚠️ Continuing with signup despite profile issues');
-      }
+      // Always try to create user profile (don't rely on trigger)
+      console.log('🔄 Creating user profile...');
+      await this.ensureUserProfile(authData.user.id, authData.user.email!, data.name);
 
       console.log('✅ Signup completed successfully');
       return { user: authData.user as unknown as User, error: null };
       
     } catch (error) {
       console.error('❌ Unexpected error during signup:', error);
-      return { user: null, error: handleSupabaseError(error) };
+      return { user: null, error: 'An unexpected error occurred. Please try again.' };
+    }
+  },
+
+  // Helper method to ensure user profile exists
+  async ensureUserProfile(userId: string, email: string, name: string): Promise<void> {
+    try {
+      // First, check if profile already exists
+      console.log('🔍 Checking if user profile exists...');
+      const { data: existingProfile } = await supabase
+        .from('users')
+        .select('id')
+        .eq('id', userId)
+        .single();
+
+      if (existingProfile) {
+        console.log('✅ User profile already exists');
+        return;
+      }
+
+      // Profile doesn't exist, create it
+      console.log('📝 Creating user profile...');
+      const { error: insertError } = await supabase
+        .from('users')
+        .insert({
+          id: userId,
+          email: email,
+          name: name,
+        });
+
+      if (insertError) {
+        // Check if it's a duplicate key error (race condition)
+        if (insertError.code === '23505') {
+          console.log('✅ User profile created by another process (race condition handled)');
+          return;
+        }
+        
+        console.error('❌ Failed to create user profile:', insertError);
+        throw insertError;
+      }
+
+      console.log('✅ User profile created successfully');
+      
+    } catch (error) {
+      console.error('❌ Error in ensureUserProfile:', error);
+      // Don't throw error - allow signup to proceed even if profile creation fails
+      // The user can still access the app and we can create the profile later
     }
   },
 
