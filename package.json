@@ -18,6 +18,7 @@
     "test:watch": "vitest --watch",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
+    "test:signup": "node scripts/test-signup.js",
     "prepare": "husky install || true"
   },
   "dependencies": {
