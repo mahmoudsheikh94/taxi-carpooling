@@ -1,5 +1,6 @@
 import { supabase, handleSupabaseError } from './client';
 import type { User } from '../../types';
+import { apiConfig, isDev } from '../../config/env';
 
 export interface AuthCredentials {
   email: string;
@@ -14,6 +15,17 @@ export interface AuthResponse {
   user: User | null;
   error: string | null;
 }
+
+// Helper function to get the correct redirect URL based on environment
+const getRedirectUrl = (path: string): string => {
+  if (isDev) {
+    // In development, use localhost
+    return `${window.location.origin}${path}`;
+  } else {
+    // In production, use the configured app URL
+    return `${apiConfig.app.url}${path}`;
+  }
+};
 
 export const authService = {
   // Sign up with email and password
@@ -30,12 +42,14 @@ export const authService = {
             full_name: data.name,
             display_name: data.name, // Multiple metadata fields for compatibility
           },
+          emailRedirectTo: getRedirectUrl('/auth/callback'),
         },
       };
       
       console.log('📤 Sending signup request with payload:', { 
         email: signUpPayload.email, 
-        metadata: signUpPayload.options.data 
+        metadata: signUpPayload.options.data,
+        emailRedirectTo: signUpPayload.options.emailRedirectTo
       });
 
       const { data: authData, error: signUpError } = await supabase.auth.signUp(signUpPayload);
@@ -184,7 +198,7 @@ export const authService = {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: getRedirectUrl('/auth/callback'),
         },
       });
 
@@ -215,7 +229,7 @@ export const authService = {
   async resetPassword(email: string): Promise<{ error: string | null }> {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: getRedirectUrl('/auth/reset-password'),
       });
 
       if (error) {
