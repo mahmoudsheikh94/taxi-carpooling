@@ -1,4 +1,122 @@
-# Security Policy
+# Security Documentation - Taxi Carpooling App
+
+## 🔒 Supabase ANON Key Security
+
+### Why the ANON Key is Safe to Expose
+
+The Supabase ANON key that appears in your frontend bundle is **intentionally designed to be public**. This is not a security vulnerability but rather how Supabase's security model works:
+
+#### 1. **ANON Key Design**
+- The ANON key is specifically created for client-side use
+- It has limited permissions and can only access data through Row Level Security (RLS) policies
+- It cannot perform administrative operations or bypass security policies
+
+#### 2. **Row Level Security (RLS) Protection**
+Our database uses comprehensive RLS policies that ensure:
+- Users can only access their own data
+- Trip data is filtered based on user permissions
+- Chat messages are restricted to participants only
+- All sensitive operations require proper authentication
+
+#### 3. **Authentication Layer**
+- Real user authentication is handled by JWT tokens
+- The ANON key is only used for initial connection
+- All authenticated requests use signed JWT tokens with user-specific permissions
+
+### Security Measures in Place
+
+#### Database Security
+```sql
+-- Example RLS policies in our schema
+CREATE POLICY "Users can view their own profile and active users" ON users 
+FOR SELECT USING (auth.uid() = id OR (is_active = TRUE));
+
+CREATE POLICY "Users can update their own profile" ON users 
+FOR UPDATE USING (auth.uid() = id);
+
+CREATE POLICY "Anyone can view active trips" ON trips 
+FOR SELECT USING (status = 'ACTIVE');
+
+CREATE POLICY "Users can create their own trips" ON trips 
+FOR INSERT WITH CHECK (auth.uid() = user_id);
+```
+
+#### Environment Configuration
+```typescript
+// Our environment validation ensures proper setup
+const envSchema = z.object({
+  VITE_SUPABASE_URL: z.string().url('Invalid Supabase URL'),
+  VITE_SUPABASE_ANON_KEY: z.string().min(1, 'Supabase anon key is required'),
+  // ... other validations
+});
+```
+
+#### Additional Security Layers
+
+1. **JWT Token Security**
+   - Short-lived access tokens (1 hour default)
+   - Automatic token refresh
+   - Secure HTTP-only cookie storage (when configured)
+
+2. **Data Validation**
+   - Zod schemas validate all user inputs
+   - TypeScript ensures type safety
+   - Sanitization of user-generated content
+
+3. **Network Security**
+   - HTTPS enforcement in production
+   - CORS configuration restricts origins
+   - Supabase provides DDoS protection
+
+### What Would Be Concerning
+
+❌ **Actual Security Risks** (which we don't have):
+- Service role key in frontend code
+- Database passwords in client code
+- API keys with administrative privileges
+- Unprotected database access without RLS
+
+✅ **What We Have** (secure by design):
+- Public ANON key with limited permissions
+- Comprehensive RLS policies
+- Proper authentication flow
+- Input validation and sanitization
+
+### Verification Steps
+
+You can verify the security by:
+
+1. **Check RLS Policies**: All our database tables have RLS enabled
+2. **Test Data Access**: Try accessing other users' data - it should be blocked
+3. **Review JWT Claims**: Authenticated requests use proper user identification
+4. **Monitor Supabase Logs**: Track any unauthorized access attempts
+
+### References
+
+- [Supabase Security Documentation](https://supabase.com/docs/guides/auth/row-level-security)
+- [Why ANON Keys are Safe](https://supabase.com/docs/guides/api/api-keys)
+- [Database Security Best Practices](https://supabase.com/docs/guides/database/security)
+
+## 🛡️ Additional Security Considerations
+
+### Environment Variables
+- Never commit `.env` files to version control
+- Use different keys for development/staging/production
+- Rotate keys periodically
+
+### User Data Protection
+- Hash sensitive data before storage
+- Implement data retention policies
+- Allow users to delete their accounts
+
+### Monitoring and Alerting
+- Set up Supabase dashboard monitoring
+- Track unusual API usage patterns
+- Monitor failed authentication attempts
+
+---
+
+**Conclusion**: The exposed ANON key in your frontend bundle is not a security concern but rather the standard, secure way Supabase applications work. The real security is enforced by RLS policies and proper authentication flows.
 
 ## Supported Versions
 
