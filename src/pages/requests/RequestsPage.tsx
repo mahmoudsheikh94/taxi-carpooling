@@ -66,7 +66,7 @@ export function RequestsPage() {
                     {tab.count} total
                   </Badge>
                   {tab.pending > 0 && (
-                    <Badge color="orange" size="sm">
+                    <Badge color="yellow" size="sm">
                       {tab.pending} pending
                     </Badge>
                   )}

@@ -8,12 +8,14 @@ import type { TripFilterFormData } from '../../utils/validations';
 
 interface TripFiltersProps {
   onFiltersChange: (filters: TripFilterFormData) => void;
+  onClearFilters?: () => void;
   initialFilters?: TripFilterFormData;
   className?: string;
 }
 
 export function TripFilters({ 
   onFiltersChange, 
+  onClearFilters,
   initialFilters = {}, 
   className = '' 
 }: TripFiltersProps) {

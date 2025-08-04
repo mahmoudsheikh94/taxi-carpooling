@@ -183,7 +183,7 @@ export function MyTripsPage() {
           <Tabs
             tabs={tabs}
             activeTab={activeTab}
-            onChange={setActiveTab}
+            onChange={(tabId: string) => setActiveTab(tabId as TripTab)}
             showCount={true}
           />
         </Card>

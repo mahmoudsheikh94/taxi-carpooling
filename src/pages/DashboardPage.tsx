@@ -60,16 +60,7 @@ export function DashboardPage() {
 
           <Card>
             <CardHeader
-              title={
-                <div className="flex items-center space-x-2">
-                  <span>Messages</span>
-                  {totalUnreadCount > 0 && (
-                    <Badge color="red" size="sm">
-                      {totalUnreadCount}
-                    </Badge>
-                  )}
-                </div>
-              }
+              title="Messages"
               subtitle="Chat with your travel companions"
             />
             <div className="text-center py-8">

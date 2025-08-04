@@ -15,7 +15,7 @@ export function TripDetailsPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { currentTrip, isLoading, error, getTripById, setCurrentTrip } = useTripStore();
-  const { sendTripRequest, isLoading: requestLoading } = useRequestStore();
+  const { createRequest, isLoading: requestLoading } = useRequestStore();
 
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinRequestSent, setJoinRequestSent] = useState(false);

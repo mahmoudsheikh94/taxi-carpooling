@@ -12,6 +12,9 @@ interface TripListProps {
   status?: string;
   limit?: number;
   className?: string;
+  trips?: any[];
+  onJoinRequest?: (tripId: string) => void;
+  showJoinButton?: boolean;
 }
 
 export function TripList({ 
@@ -19,10 +22,13 @@ export function TripList({
   userId, 
   status, 
   limit,
-  className = '' 
+  className = '',
+  trips: externalTrips,
+  onJoinRequest,
+  showJoinButton = false
 }: TripListProps) {
   const {
-    trips,
+    trips: storeTrips,
     isLoading,
     error,
     hasMore,
@@ -35,6 +41,9 @@ export function TripList({
     subscribeToTrips,
     unsubscribeFromTrips,
   } = useTripStore();
+
+  // Use external trips if provided, otherwise use store trips
+  const trips = externalTrips || storeTrips;
 
   const { showToast } = useToast();
   const [isLoadingMore, setIsLoadingMore] = useState(false);
