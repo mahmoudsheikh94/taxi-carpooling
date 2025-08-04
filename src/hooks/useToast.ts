@@ -15,11 +15,16 @@ export const useToast = () => {
   const info = (title: string, message?: string) => 
     addToast({ type: 'info', title, message });
   
+  // Legacy showToast method for backward compatibility
+  const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+    addToast({ type, title: message });
+  };
+  
   return {
     success,
     error,
     warning,
     info,
-    showToast: success, // Alias for compatibility
+    showToast,
   };
 };

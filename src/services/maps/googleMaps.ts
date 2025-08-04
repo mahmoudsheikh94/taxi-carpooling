@@ -19,7 +19,7 @@ const getGoogleMapsConfig = () => {
   return {
     apiKey,
     version: 'weekly' as const,
-    libraries: ['places', 'geometry'] as const,
+    libraries: ['places', 'geometry'],
     language: 'en',
     region: 'US',
     // Add additional configuration for production
