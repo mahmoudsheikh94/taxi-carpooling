@@ -6,7 +6,7 @@
   "regions": ["iad1"],
   "rewrites": [
     {
-      "source": "/((?!api/.*|assets/.*|icons/.*|manifest\\.json|sw\\.js|browserconfig\\.xml).*)",
+      "source": "/((?!api|assets|icons|manifest.json|sw.js|browserconfig.xml).*)",
       "destination": "/index.html"
     }
   ],
