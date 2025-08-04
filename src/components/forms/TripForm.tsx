@@ -35,12 +35,11 @@ export function TripForm({ onSuccess, onCancel, className }: TripFormProps) {
   } = useForm<TripFormData>({
     resolver: zodResolver(tripSchema),
     defaultValues: {
-      currency: 'USD',
       smoking_allowed: false,
       pets_allowed: true,
       music_preference: 'indifferent',
       conversation_level: 'indifferent',
-      max_passengers: 3,
+      max_passengers: 2,
     },
   });
 
@@ -145,9 +144,9 @@ export function TripForm({ onSuccess, onCancel, className }: TripFormProps) {
     <div className={className}>
       <Card className="p-6">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Create New Trip</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Share a Taxi Ride</h2>
           <p className="text-gray-600">
-            Share your taxi ride and split the cost with fellow travelers
+            Looking for travel companions to share a taxi? Enter your trip details and we'll find people going the same way to split the cost.
           </p>
         </div>
 
@@ -208,51 +207,18 @@ export function TripForm({ onSuccess, onCancel, className }: TripFormProps) {
               />
               
               <Input
-                label="Maximum Passengers"
+                label="How many seats do you need?"
                 type="number"
                 {...register('max_passengers', { valueAsNumber: true })}
                 error={errors.max_passengers?.message}
                 required
                 min={1}
                 max={8}
+                placeholder="e.g., 2"
+                helperText="Total number of people traveling (including yourself)"
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Price per Seat (Optional)"
-                type="number"
-                step="0.01"
-                {...register('price_per_seat', { valueAsNumber: true })}
-                error={errors.price_per_seat?.message}
-                placeholder="0.00"
-              />
-              
-              <Select
-                label="Currency"
-                {...register('currency')}
-                error={errors.currency?.message}
-                options={[
-                  { value: 'USD', label: 'USD ($)' },
-                  { value: 'EUR', label: 'EUR (€)' },
-                  { value: 'GBP', label: 'GBP (£)' },
-                  { value: 'CAD', label: 'CAD (C$)' },
-                ]}
-              />
-            </div>
-
-            <Select
-              label="Payment Method (Optional)"
-              {...register('payment_method')}
-              error={errors.payment_method?.message}
-              placeholder="Select payment method"
-              options={[
-                { value: 'cash', label: 'Cash' },
-                { value: 'card', label: 'Credit/Debit Card' },
-                { value: 'app', label: 'Mobile Payment App' },
-                { value: 'split', label: 'Split Payment' },
-              ]}
-            />
 
             <TextArea
               label="Additional Notes (Optional)"
@@ -308,52 +274,16 @@ export function TripForm({ onSuccess, onCancel, className }: TripFormProps) {
             </div>
           </div>
 
-          {/* Vehicle Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium text-gray-900">Vehicle Information (Optional)</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Vehicle Make"
-                {...register('vehicle_make')}
-                error={errors.vehicle_make?.message}
-                placeholder="e.g., Toyota"
-              />
-              
-              <Input
-                label="Vehicle Model"
-                {...register('vehicle_model')}
-                error={errors.vehicle_model?.message}
-                placeholder="e.g., Camry"
-              />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Vehicle Color"
-                {...register('vehicle_color')}
-                error={errors.vehicle_color?.message}
-                placeholder="e.g., Silver"
-              />
-              
-              <Input
-                label="License Plate"
-                {...register('vehicle_plate')}
-                error={errors.vehicle_plate?.message}
-                placeholder="e.g., ABC-1234"
-              />
-            </div>
-          </div>
 
           {/* Form Actions */}
           <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t">
             <Button
               type="submit"
-              disabled={isSubmitting || isLoading || (!routeCalculated && showRoute)}
+              disabled={isSubmitting || isLoading}
               className="flex-1 sm:flex-none"
             >
               {(isSubmitting || isLoading) && <LoadingSpinner className="mr-2" />}
-              Create Trip
+              Find Travel Companions
             </Button>
             
             <Button
@@ -367,11 +297,6 @@ export function TripForm({ onSuccess, onCancel, className }: TripFormProps) {
             </Button>
           </div>
 
-          {showRoute && !routeCalculated && (
-            <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">
-              Please wait for the route to be calculated before creating the trip.
-            </div>
-          )}
         </form>
       </Card>
     </div>

@@ -182,13 +182,9 @@ export const tripSchema = z.object({
     .number()
     .min(1, 'Must have at least 1 passenger')
     .max(8, 'Cannot exceed 8 passengers'),
-  price_per_seat: z
-    .number()
-    .min(0, 'Price cannot be negative')
-    .max(1000, 'Price cannot exceed $1000')
-    .optional(),
-  currency: z.string().length(3, 'Currency must be 3 characters').default('USD'),
-  payment_method: z.enum(['cash', 'card', 'app', 'split']).optional(),
+  price_per_seat: z.number().optional(),
+  currency: z.string().optional().default('USD'),
+  payment_method: z.string().optional(),
   notes: z
     .string()
     .max(500, 'Notes cannot exceed 500 characters')
@@ -197,10 +193,10 @@ export const tripSchema = z.object({
   pets_allowed: z.boolean().default(true),
   music_preference: z.enum(['yes', 'no', 'indifferent']).default('indifferent'),
   conversation_level: z.enum(['chatty', 'quiet', 'indifferent']).default('indifferent'),
-  vehicle_make: z.string().max(50).optional(),
-  vehicle_model: z.string().max(50).optional(),
-  vehicle_color: z.string().max(30).optional(),
-  vehicle_plate: z.string().max(20).optional(),
+  vehicle_make: z.string().optional(),
+  vehicle_model: z.string().optional(),
+  vehicle_color: z.string().optional(),
+  vehicle_plate: z.string().optional(),
 });
 
 export const tripUpdateSchema = tripSchema.partial().extend({
