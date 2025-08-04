@@ -39,9 +39,12 @@ export function DashboardPage() {
             />
             <div className="text-center py-8">
               <p className="text-gray-500">No trips yet</p>
-              <button className="mt-2 text-blue-600 hover:text-blue-700 font-medium">
+              <Link 
+                to={ROUTES.CREATE_TRIP}
+                className="inline-block mt-2 text-blue-600 hover:text-blue-700 font-medium hover:underline"
+              >
                 Create your first trip
-              </button>
+              </Link>
             </div>
           </Card>
 
@@ -52,9 +55,12 @@ export function DashboardPage() {
             />
             <div className="text-center py-8">
               <p className="text-gray-500">No matches yet</p>
-              <button className="mt-2 text-blue-600 hover:text-blue-700 font-medium">
+              <Link 
+                to={ROUTES.TRIPS}
+                className="inline-block mt-2 text-blue-600 hover:text-blue-700 font-medium hover:underline"
+              >
                 Find matches
-              </button>
+              </Link>
             </div>
           </Card>
 
