@@ -13,6 +13,8 @@ export const ROUTES = {
   TRIPS: '/trips',
   CREATE_TRIP: '/trips/create',
   TRIP_DETAILS: '/trips/:id',
+  EDIT_TRIP: '/trips/:id/edit',
+  MY_TRIPS: '/my-trips',
   MATCHES: '/matches',
   REQUESTS: '/requests',
   CHAT: '/chat',

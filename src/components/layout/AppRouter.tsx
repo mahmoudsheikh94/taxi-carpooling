@@ -10,6 +10,13 @@ import {
 import { DashboardPage } from '../../pages/DashboardPage';
 import { ChatPage, ChatListPage } from '../../pages/chat';
 import { RequestsPage } from '../../pages/requests';
+import { 
+  TripListPage,
+  TripDetailsPage,
+  CreateTripPage,
+  MyTripsPage,
+  EditTripPage
+} from '../../pages/trips';
 import { ROUTES } from '../../constants';
 
 export function AppRouter() {
@@ -70,6 +77,48 @@ export function AppRouter() {
           element={
             <AuthGuard requireAuth={true}>
               <ChatPage />
+            </AuthGuard>
+          } 
+        />
+        
+        {/* Trip routes */}
+        <Route 
+          path={ROUTES.TRIPS} 
+          element={
+            <AuthGuard requireAuth={true}>
+              <TripListPage />
+            </AuthGuard>
+          } 
+        />
+        <Route 
+          path={ROUTES.CREATE_TRIP} 
+          element={
+            <AuthGuard requireAuth={true}>
+              <CreateTripPage />
+            </AuthGuard>
+          } 
+        />
+        <Route 
+          path={ROUTES.TRIP_DETAILS} 
+          element={
+            <AuthGuard requireAuth={true}>
+              <TripDetailsPage />
+            </AuthGuard>
+          } 
+        />
+        <Route 
+          path={ROUTES.EDIT_TRIP} 
+          element={
+            <AuthGuard requireAuth={true}>
+              <EditTripPage />
+            </AuthGuard>
+          } 
+        />
+        <Route 
+          path={ROUTES.MY_TRIPS} 
+          element={
+            <AuthGuard requireAuth={true}>
+              <MyTripsPage />
             </AuthGuard>
           } 
         />

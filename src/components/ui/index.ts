@@ -13,3 +13,4 @@ export { EmptyState } from './EmptyState';
 export { ErrorBoundary, useErrorBoundary } from './ErrorBoundary';
 export { InstallPrompt, useInstallPrompt } from './InstallPrompt';
 export { OfflineIndicator } from './OfflineIndicator';
+export { Tabs } from './Tabs';
