@@ -31,10 +31,13 @@ export function PlacesAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasGoogleMaps, setHasGoogleMaps] = useState(true);
 
   useEffect(() => {
     // Skip initialization if Google Maps is not available
     if (!isGoogleMapsAvailable()) {
+      console.warn('Google Maps API not available, using fallback input');
+      setHasGoogleMaps(false);
       return;
     }
 
@@ -91,7 +94,8 @@ export function PlacesAutocomplete({
         autocompleteRef.current = autocomplete;
       } catch (err) {
         console.error('Failed to initialize Places Autocomplete:', err);
-        onError?.('Failed to load location services');
+        setHasGoogleMaps(false);
+        onError?.('Location autocomplete unavailable - you can still enter addresses manually');
       } finally {
         setIsLoading(false);
       }
@@ -107,8 +111,8 @@ export function PlacesAutocomplete({
   }, [countries, types, onError]);
 
   // Handle manual input changes
-  const handleInputChange = (newValue: string) => {
-    onChange(newValue);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.value);
   };
 
   return (
@@ -118,7 +122,13 @@ export function PlacesAutocomplete({
         label={label}
         value={value}
         onChange={handleInputChange}
-        placeholder={isLoading ? 'Loading...' : placeholder}
+        placeholder={
+          isLoading 
+            ? 'Loading location services...' 
+            : hasGoogleMaps 
+              ? placeholder 
+              : `${placeholder} (manual entry)`
+        }
         error={error}
         required={required}
         disabled={isLoading}
