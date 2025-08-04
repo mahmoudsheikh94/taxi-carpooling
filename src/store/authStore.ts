@@ -40,18 +40,43 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true, error: null });
         
         try {
-          const { user, error } = await authService.signIn(credentials);
+          // Add timeout to prevent hanging
+          const signInTimeout = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('Sign in timeout - please try again')), 15000);
+          });
+          
+          const { user, error } = await Promise.race([
+            authService.signIn(credentials),
+            signInTimeout
+          ]);
           
           if (error) {
-            set({ error, isLoading: false });
+            // Provide user-friendly error messages
+            let userError = error;
+            if (error.includes('Invalid login credentials')) {
+              userError = 'Invalid email or password. Please check your credentials and try again.';
+            } else if (error.includes('Email not confirmed')) {
+              userError = 'Please check your email and click the confirmation link before signing in.';
+            } else if (error.includes('Too many requests')) {
+              userError = 'Too many login attempts. Please wait a few minutes and try again.';
+            }
+            
+            set({ error: userError, isLoading: false });
+            return false;
+          }
+          
+          if (!user) {
+            set({ error: 'Sign in failed - no user data received', isLoading: false });
             return false;
           }
           
           set({ user, isLoading: false, error: null });
           return true;
         } catch (error) {
+          console.error('Sign in error:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Sign in failed';
           set({ 
-            error: error instanceof Error ? error.message : 'Sign in failed', 
+            error: errorMessage.includes('timeout') ? errorMessage : 'Sign in failed - please try again', 
             isLoading: false 
           });
           return false;
@@ -62,18 +87,40 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true, error: null });
         
         try {
-          const { user, error } = await authService.signUp(data);
+          // Add timeout to prevent hanging
+          const signUpTimeout = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('Sign up timeout - please try again')), 20000);
+          });
+          
+          const { user, error } = await Promise.race([
+            authService.signUp(data),
+            signUpTimeout
+          ]);
           
           if (error) {
-            set({ error, isLoading: false });
+            // Provide user-friendly error messages
+            let userError = error;
+            if (error.includes('already registered')) {
+              userError = 'An account with this email already exists. Please try signing in instead.';
+            } else if (error.includes('Password should be at least')) {
+              userError = 'Password must be at least 6 characters long.';
+            } else if (error.includes('Invalid email')) {
+              userError = 'Please enter a valid email address.';
+            } else if (error.includes('check your email')) {
+              userError = error; // Keep the email confirmation message as is
+            }
+            
+            set({ error: userError, isLoading: false });
             return false;
           }
           
           set({ user, isLoading: false, error: null });
           return true;
         } catch (error) {
+          console.error('Sign up error:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Sign up failed';
           set({ 
-            error: error instanceof Error ? error.message : 'Sign up failed', 
+            error: errorMessage.includes('timeout') ? errorMessage : 'Sign up failed - please try again', 
             isLoading: false 
           });
           return false;
@@ -198,15 +245,25 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true });
         
         try {
-          const user = await authService.getCurrentUser();
+          // Add timeout to prevent indefinite hanging
+          const authTimeout = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('Authentication timeout')), 10000);
+          });
           
-          // Set up auth state change listener
+          const user = await Promise.race([
+            authService.getCurrentUser(),
+            authTimeout
+          ]);
+          
+          // Set up auth state change listener with error handling
           authService.onAuthStateChange((user) => {
+            // The auth service already handles profile fetching, just update the state
             set({ user, isLoading: false });
           });
           
           set({ user, isLoading: false, isInitialized: true });
         } catch (error) {
+          console.error('Auth initialization error:', error);
           set({ 
             error: error instanceof Error ? error.message : 'Auth initialization failed',
             isLoading: false,

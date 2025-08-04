@@ -10,7 +10,7 @@ const envSchema = z.object({
   VITE_GOOGLE_MAPS_API_KEY: z.string().optional(),
   
   // Application Configuration
-  VITE_APP_URL: z.string().url('Invalid app URL').min(1, 'App URL is required'),
+  VITE_APP_URL: z.string().url('Invalid app URL').optional(),
   VITE_APP_NAME: z.string().min(1, 'App name is required').default('Taxi Carpooling'),
   
   // Optional: Analytics and Monitoring
@@ -87,6 +87,17 @@ export const features = {
   enableGoogleMaps: !!env.VITE_GOOGLE_MAPS_API_KEY && env.VITE_GOOGLE_MAPS_API_KEY !== 'your_google_maps_api_key',
 } as const;
 
+// Helper to detect current app URL
+const detectAppUrl = (): string => {
+  // In browser environment, try to detect from window.location
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  
+  // Server-side fallback (shouldn't happen in Vite, but just in case)
+  return env.VITE_APP_URL || 'https://taxi-carpooling.vercel.app';
+};
+
 // API Configuration
 export const apiConfig = {
   supabase: {
@@ -97,7 +108,7 @@ export const apiConfig = {
     apiKey: env.VITE_GOOGLE_MAPS_API_KEY,
   },
   app: {
-    url: env.VITE_APP_URL,
+    url: env.VITE_APP_URL || detectAppUrl(),
     name: env.VITE_APP_NAME,
   },
   sentry: {
@@ -148,6 +159,11 @@ export function checkRequiredServices() {
       name: 'Supabase Anon Key',
       check: () => !!env.VITE_SUPABASE_ANON_KEY,
       required: true,
+    },
+    {
+      name: 'App URL',
+      check: () => !!(env.VITE_APP_URL || (typeof window !== 'undefined' && window.location.origin)),
+      required: false, // Not strictly required as we can detect it
     },
     {
       name: 'Google Maps API Key',

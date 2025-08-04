@@ -18,12 +18,32 @@ export interface AuthResponse {
 
 // Helper function to get the correct redirect URL based on environment
 const getRedirectUrl = (path: string): string => {
+  // Always try to use the current window location origin first
+  // This ensures we match the domain the user is actually on
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  
   if (isDev) {
-    // In development, use localhost
-    return `${window.location.origin}${path}`;
+    // In development, always use the current origin (localhost)
+    return `${currentOrigin}${path}`;
   } else {
-    // In production, use the configured app URL
-    return `${apiConfig.app.url}${path}`;
+    // In production, prefer the configured app URL, but fall back to current origin
+    // This handles cases where the app might be deployed to multiple domains
+    const configuredUrl = apiConfig.app.url;
+    
+    // If configured URL exists and looks valid, use it
+    if (configuredUrl && configuredUrl.startsWith('http')) {
+      return `${configuredUrl}${path}`;
+    }
+    
+    // Fallback to current origin if config is missing or invalid
+    if (currentOrigin) {
+      console.warn('⚠️ Using current origin for auth redirect - ensure VITE_APP_URL is set correctly');
+      return `${currentOrigin}${path}`;
+    }
+    
+    // Last resort fallback (should rarely happen)
+    console.error('❌ No valid redirect URL found - check VITE_APP_URL configuration');
+    return `https://taxi-carpooling.vercel.app${path}`;
   }
 };
 
@@ -107,23 +127,29 @@ export const authService = {
     }
   },
 
-  // Helper method to ensure user profile exists
-  async ensureUserProfile(userId: string, email: string, name: string): Promise<void> {
+  // Helper method to ensure user profile exists with retry logic
+  async ensureUserProfile(userId: string, email: string, name: string, retryCount = 0): Promise<void> {
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1 second
+
     try {
       // First, check if profile already exists
-      console.log('🔍 Checking if user profile exists...');
-      const { data: existingProfile } = await supabase
+      console.log(`🔍 Checking if user profile exists... (attempt ${retryCount + 1})`);
+      const { data: existingProfile, error: selectError } = await supabase
         .from('users')
         .select('id')
         .eq('id', userId)
-        .single();
+        .maybeSingle(); // Use maybeSingle to avoid PGRST116 errors
 
-      if (existingProfile) {
+      if (selectError) {
+        console.error('❌ Error checking existing profile:', selectError);
+        // If we can't check, try to create anyway
+      } else if (existingProfile) {
         console.log('✅ User profile already exists');
         return;
       }
 
-      // Profile doesn't exist, create it
+      // Profile doesn't exist or we couldn't check, try to create it
       console.log('📝 Creating user profile...');
       const { error: insertError } = await supabase
         .from('users')
@@ -131,16 +157,27 @@ export const authService = {
           id: userId,
           email: email,
           name: name,
+          is_active: true,
         });
 
       if (insertError) {
-        // Check if it's a duplicate key error (race condition)
+        // Handle specific error cases
         if (insertError.code === '23505') {
           console.log('✅ User profile created by another process (race condition handled)');
           return;
         }
         
-        console.error('❌ Failed to create user profile:', insertError);
+        if (insertError.code === '42501' && retryCount < maxRetries) {
+          console.warn(`⚠️ RLS policy error, retrying in ${retryDelay}ms... (${retryCount + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          return this.ensureUserProfile(userId, email, name, retryCount + 1);
+        }
+        
+        console.error('❌ Failed to create user profile:', {
+          code: insertError.code,
+          message: insertError.message,
+          details: insertError.details
+        });
         throw insertError;
       }
 
@@ -148,6 +185,13 @@ export const authService = {
       
     } catch (error) {
       console.error('❌ Error in ensureUserProfile:', error);
+      
+      // If we've exhausted retries, don't throw - allow auth to proceed
+      if (retryCount >= maxRetries) {
+        console.warn('⚠️ Profile creation failed after max retries. User can still authenticate.');
+        return;
+      }
+      
       // Don't throw error - allow signup to proceed even if profile creation fails
       // The user can still access the app and we can create the profile later
     }
@@ -182,7 +226,7 @@ export const authService = {
           .from('users')
           .select('*')
           .eq('id', authData.user.id)
-          .single();
+          .maybeSingle(); // Use maybeSingle to avoid PGRST116 errors
 
         if (profileError) {
           console.error('❌ Profile fetch error:', {
@@ -191,27 +235,36 @@ export const authService = {
             details: profileError
           });
 
-          // If profile doesn't exist (PGRST116), create it
-          if (profileError.code === 'PGRST116') {
-            console.log('🔄 Profile not found, creating fallback profile...');
-            const fallbackProfile = await this.createFallbackProfile(
-              authData.user.id, 
-              authData.user.email!, 
-              authData.user.user_metadata?.name || 'User'
-            );
-            
-            if (fallbackProfile) {
-              console.log('✅ Fallback profile created successfully');
-              return { user: fallbackProfile, error: null };
-            }
+          // Handle profile fetch error
+          console.log('🔄 Profile fetch failed, creating fallback profile...');
+          const fallbackProfile = await this.createFallbackProfile(
+            authData.user.id, 
+            authData.user.email!, 
+            authData.user.user_metadata?.name || authData.user.user_metadata?.full_name || 'User'
+          );
+          
+          if (fallbackProfile) {
+            console.log('✅ Fallback profile created successfully');
+            return { user: fallbackProfile, error: null };
           }
 
           return { user: null, error: 'Unable to load your profile. Please try again or contact support.' };
         }
 
         if (!profile) {
-          console.error('❌ Profile data is null despite no error');
-          return { user: null, error: 'Profile data not found' };
+          console.log('🔄 Profile not found, creating fallback profile...');
+          const fallbackProfile = await this.createFallbackProfile(
+            authData.user.id, 
+            authData.user.email!, 
+            authData.user.user_metadata?.name || authData.user.user_metadata?.full_name || 'User'
+          );
+          
+          if (fallbackProfile) {
+            console.log('✅ Fallback profile created successfully');
+            return { user: fallbackProfile, error: null };
+          }
+          
+          return { user: null, error: 'Profile not found and could not be created' };
         }
 
         console.log('✅ User profile loaded successfully');
@@ -241,10 +294,13 @@ export const authService = {
     }
   },
 
-  // Helper method to create fallback profile during login
-  async createFallbackProfile(userId: string, email: string, name: string): Promise<User | null> {
+  // Helper method to create fallback profile during login with retry logic
+  async createFallbackProfile(userId: string, email: string, name: string, retryCount = 0): Promise<User | null> {
+    const maxRetries = 3;
+    const retryDelay = 1000;
+
     try {
-      console.log('🔧 Creating fallback profile for user:', userId);
+      console.log(`🔧 Creating fallback profile for user: ${userId} (attempt ${retryCount + 1})`);
       
       const { data: newProfile, error: createError } = await supabase
         .from('users')
@@ -252,20 +308,54 @@ export const authService = {
           id: userId,
           email: email,
           name: name,
+          is_active: true,
         })
         .select()
-        .single();
+        .maybeSingle(); // Use maybeSingle to avoid PGRST116 errors
 
       if (createError) {
-        console.error('❌ Failed to create fallback profile:', createError);
+        // Handle specific error cases  
+        if (createError.code === '23505') {
+          console.log('✅ Profile already exists (race condition), fetching existing...');
+          const { data: existingProfile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .maybeSingle();
+          return existingProfile as User || null;
+        }
+
+        if (createError.code === '42501' && retryCount < maxRetries) {
+          console.warn(`⚠️ RLS policy error, retrying in ${retryDelay}ms... (${retryCount + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          return this.createFallbackProfile(userId, email, name, retryCount + 1);
+        }
+
+        console.error('❌ Failed to create fallback profile:', {
+          code: createError.code,
+          message: createError.message,
+          details: createError.details
+        });
         return null;
       }
 
-      console.log('✅ Fallback profile created:', newProfile);
+      if (!newProfile) {
+        console.error('❌ No profile data returned from insert');
+        return null;
+      }
+
+      console.log('✅ Fallback profile created successfully');
       return newProfile as User;
 
     } catch (error) {
       console.error('❌ Error creating fallback profile:', error);
+      
+      if (retryCount < maxRetries) {
+        console.log(`🔄 Retrying fallback profile creation... (${retryCount + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        return this.createFallbackProfile(userId, email, name, retryCount + 1);
+      }
+      
       return null;
     }
   },
@@ -353,7 +443,7 @@ export const authService = {
         .from('users')
         .select('*')
         .eq('id', authUser.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) {
         console.error('❌ Error fetching current user profile:', {
@@ -361,21 +451,26 @@ export const authService = {
           message: profileError.message
         });
         
-        // If profile doesn't exist, try to create it
-        if (profileError.code === 'PGRST116') {
-          console.log('🔄 Current user profile not found, creating fallback...');
-          return await this.createFallbackProfile(
-            authUser.id,
-            authUser.email!,
-            authUser.user_metadata?.name || 'User'
-          );
-        }
-        
-        return null;
+        // Profile fetch failed, create fallback
+        console.log('🔄 Current user profile not found, creating fallback...');
+        return await this.createFallbackProfile(
+          authUser.id,
+          authUser.email!,
+          authUser.user_metadata?.name || authUser.user_metadata?.full_name || 'User'
+        );
+      }
+
+      if (!profile) {
+        console.log('🔄 Profile is null, creating fallback...');
+        return await this.createFallbackProfile(
+          authUser.id,
+          authUser.email!,
+          authUser.user_metadata?.name || authUser.user_metadata?.full_name || 'User'
+        );
       }
 
       console.log('✅ Current user profile loaded successfully');
-      return profile as User | null;
+      return profile as User;
     } catch (error) {
       console.error('❌ Error getting current user:', error);
       return null;
@@ -406,8 +501,38 @@ export const authService = {
   onAuthStateChange(callback: (user: User | null) => void) {
     return supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const user = await this.getCurrentUser();
-        callback(user);
+        try {
+          // Get user profile directly instead of using getCurrentUser to avoid recursion
+          const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .maybeSingle();
+
+          if (profileError) {
+            console.error('Error fetching user profile in auth state change:', profileError);
+            // Profile fetch failed, try to create fallback
+            const fallbackProfile = await this.createFallbackProfile(
+              session.user.id,
+              session.user.email!,
+              session.user.user_metadata?.name || session.user.user_metadata?.full_name || 'User'
+            );
+            callback(fallbackProfile);
+          } else if (!profile) {
+            // Profile is null, create fallback
+            const fallbackProfile = await this.createFallbackProfile(
+              session.user.id,
+              session.user.email!,
+              session.user.user_metadata?.name || session.user.user_metadata?.full_name || 'User'
+            );
+            callback(fallbackProfile);
+          } else {
+            callback(profile as User);
+          }
+        } catch (error) {
+          console.error('Unexpected error in auth state change:', error);
+          callback(null);
+        }
       } else {
         callback(null);
       }
