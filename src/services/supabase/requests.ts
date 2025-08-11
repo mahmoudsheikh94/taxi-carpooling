@@ -1,4 +1,5 @@
 import { supabase } from './client';
+import { notificationService } from '../notifications/notificationService';
 import type { TripRequest, LocationData } from '../../types';
 
 export interface CreateRequestData {
@@ -67,6 +68,55 @@ class RequestService {
         return { request: null, error: error.message };
       }
 
+      // Create notifications for both users
+      if (request) {
+        try {
+          // Get sender's name for the notification
+          const { data: senderData } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', data.sender_id)
+            .single();
+
+          const senderName = senderData?.name || 'Someone';
+          const tripOrigin = request.trip?.origin || 'your trip';
+          const tripDestination = request.trip?.destination || '';
+
+          // Notification for trip owner (receiver)
+          await notificationService.createNotification({
+            user_id: data.receiver_id,
+            type: 'trip_request',
+            title: 'New Trip Request',
+            message: `${senderName} requested to join your trip from ${tripOrigin}${tripDestination ? ` to ${tripDestination}` : ''}`,
+            data: {
+              request_id: request.id,
+              trip_id: data.trip_id,
+              sender_id: data.sender_id,
+              seats_requested: data.seats_requested
+            }
+          });
+
+          // Confirmation notification for requester (sender)
+          await notificationService.createNotification({
+            user_id: data.sender_id,
+            type: 'trip_request',
+            title: 'Request Sent Successfully',
+            message: `Your join request has been sent for the trip from ${tripOrigin}${tripDestination ? ` to ${tripDestination}` : ''}`,
+            data: {
+              request_id: request.id,
+              trip_id: data.trip_id,
+              receiver_id: data.receiver_id,
+              seats_requested: data.seats_requested
+            }
+          });
+
+          console.log('✅ Notifications created for trip request:', request.id);
+        } catch (notificationError) {
+          // Don't fail the request creation if notification fails
+          console.error('⚠️ Failed to create notifications for request:', notificationError);
+        }
+      }
+
       return { request, error: null };
     } catch (err) {
       console.error('Unexpected error creating request:', err);
@@ -115,6 +165,56 @@ class RequestService {
         
         if (originalRequest?.status === 'ACCEPTED') {
           await this.updateTripPassengerCount(request.trip_id, request.seats_requested, 'remove');
+        }
+      }
+
+      // Create notifications for status changes
+      if (request && (data.status === 'ACCEPTED' || data.status === 'DECLINED')) {
+        try {
+          // Get receiver's name for the notification
+          const { data: receiverData } = await supabase
+            .from('users')
+            .select('name')
+            .eq('id', request.receiver_id)
+            .single();
+
+          const receiverName = receiverData?.name || 'Someone';
+          const tripOrigin = request.trip?.origin || 'the trip';
+          const tripDestination = request.trip?.destination || '';
+          
+          if (data.status === 'ACCEPTED') {
+            // Notify the requester that their request was accepted
+            await notificationService.createNotification({
+              user_id: request.sender_id,
+              type: 'trip_request',
+              title: 'Request Accepted! 🎉',
+              message: `${receiverName} accepted your request to join the trip from ${tripOrigin}${tripDestination ? ` to ${tripDestination}` : ''}`,
+              data: {
+                request_id: request.id,
+                trip_id: request.trip_id,
+                receiver_id: request.receiver_id,
+                status: 'ACCEPTED'
+              }
+            });
+          } else if (data.status === 'DECLINED') {
+            // Notify the requester that their request was declined
+            await notificationService.createNotification({
+              user_id: request.sender_id,
+              type: 'trip_request',
+              title: 'Request Declined',
+              message: `${receiverName} declined your request for the trip from ${tripOrigin}${tripDestination ? ` to ${tripDestination}` : ''}. Keep looking for other trips!`,
+              data: {
+                request_id: request.id,
+                trip_id: request.trip_id,
+                receiver_id: request.receiver_id,
+                status: 'DECLINED'
+              }
+            });
+          }
+
+          console.log(`✅ Status change notification created for request: ${request.id} -> ${data.status}`);
+        } catch (notificationError) {
+          console.error('⚠️ Failed to create status change notification:', notificationError);
         }
       }
 

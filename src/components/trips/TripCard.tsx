@@ -1,24 +1,51 @@
 import { Link } from 'react-router-dom';
 import { Card, Button, Badge } from '../ui';
 import { formatDistanceToNow, format } from 'date-fns';
-import type { Trip } from '../../types';
+import type { Trip, TripRequest } from '../../types';
 
 interface TripCardProps {
   trip: Trip;
   onJoinRequest?: (tripId: string) => void;
   showJoinButton?: boolean;
   className?: string;
+  userRequest?: TripRequest | null; // User's existing request for this trip
+  currentUserId?: string; // Current user's ID to check if it's their own trip
 }
 
 export function TripCard({ 
   trip, 
   onJoinRequest, 
   showJoinButton = true, 
-  className = '' 
+  className = '',
+  userRequest,
+  currentUserId
 }: TripCardProps) {
   const departureDate = new Date(trip.departure_time);
   const isUpcoming = departureDate > new Date();
-  const availableSeats = trip.max_passengers - trip.current_passengers;
+  const availableSeats = trip.available_seats ?? (trip.max_passengers - trip.current_passengers);
+  
+  // Check if this is the user's own trip
+  const isOwnTrip = currentUserId && trip.user_id === currentUserId;
+  
+  // Get request status information
+  const getRequestStatus = () => {
+    if (!userRequest) return null;
+    
+    switch (userRequest.status) {
+      case 'PENDING':
+        return { text: 'Request Sent', color: 'orange', icon: '⏳' };
+      case 'ACCEPTED':
+        return { text: 'Request Accepted', color: 'green', icon: '✅' };
+      case 'DECLINED':
+        return { text: 'Request Declined', color: 'red', icon: '❌' };
+      case 'CANCELLED':
+        return { text: 'Request Cancelled', color: 'gray', icon: '🚫' };
+      default:
+        return null;
+    }
+  };
+  
+  const requestStatus = getRequestStatus();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -69,6 +96,16 @@ export function TripCard({
                 {availableSeats > 0 && trip.status === 'ACTIVE' && (
                   <Badge color="blue" variant="outline">
                     {availableSeats} {availableSeats === 1 ? 'seat' : 'seats'} available
+                  </Badge>
+                )}
+                {requestStatus && (
+                  <Badge color={requestStatus.color as any} variant="outline">
+                    {requestStatus.icon} {requestStatus.text}
+                  </Badge>
+                )}
+                {isOwnTrip && (
+                  <Badge color="purple" variant="outline">
+                    👤 Your Trip
                   </Badge>
                 )}
               </div>
@@ -209,15 +246,95 @@ export function TripCard({
       </Link>
 
       {/* Action Button */}
-      {showJoinButton && trip.status === 'ACTIVE' && availableSeats > 0 && isUpcoming && (
+      {showJoinButton && trip.status === 'ACTIVE' && isUpcoming && !isOwnTrip && (
         <div className="mt-4 pt-4 border-t">
-          <Button
-            onClick={handleJoinRequest}
-            className="w-full"
-            size="sm"
-          >
-            Request to Join
-          </Button>
+          {!userRequest && availableSeats > 0 && (
+            <Button
+              onClick={handleJoinRequest}
+              className="w-full"
+              size="sm"
+            >
+              Request to Join
+            </Button>
+          )}
+          
+          {!userRequest && availableSeats === 0 && (
+            <Button
+              disabled
+              className="w-full"
+              size="sm"
+              variant="outline"
+            >
+              Trip is Full
+            </Button>
+          )}
+          
+          {userRequest?.status === 'PENDING' && (
+            <div className="text-center">
+              <div className="text-sm text-orange-600 font-medium mb-2">
+                ⏳ Request Pending
+              </div>
+              <div className="text-xs text-gray-500">
+                Waiting for driver to respond
+              </div>
+            </div>
+          )}
+          
+          {userRequest?.status === 'ACCEPTED' && (
+            <div className="text-center">
+              <div className="text-sm text-green-600 font-medium mb-2">
+                ✅ Request Accepted!
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => window.location.href = `/chat`}
+              >
+                💬 Open Chat
+              </Button>
+            </div>
+          )}
+          
+          {userRequest?.status === 'DECLINED' && availableSeats > 0 && (
+            <div className="text-center">
+              <div className="text-sm text-red-600 font-medium mb-2">
+                ❌ Request Declined
+              </div>
+              <Button
+                onClick={handleJoinRequest}
+                className="w-full"
+                size="sm"
+                variant="outline"
+              >
+                Request Again
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Own Trip Actions */}
+      {showJoinButton && isOwnTrip && trip.status === 'ACTIVE' && isUpcoming && (
+        <div className="mt-4 pt-4 border-t">
+          <div className="flex space-x-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              onClick={() => window.location.href = `/trips/${trip.id}/edit`}
+            >
+              ✏️ Edit Trip
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1"
+              onClick={() => window.location.href = `/requests?trip=${trip.id}`}
+            >
+              📋 Manage Requests
+            </Button>
+          </div>
         </div>
       )}
     </Card>

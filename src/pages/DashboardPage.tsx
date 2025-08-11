@@ -5,12 +5,16 @@ import { Navbar } from '../components/layout';
 import { useAuthStore } from '../store';
 import { useChatStore } from '../store/chatStore';
 import { useTripStore } from '../store/tripStore';
+import { useRequestStore } from '../store/requestStore';
+import { useNotificationStore } from '../store/notificationStore';
 import { ROUTES } from '../constants';
 
 export function DashboardPage() {
   const { user } = useAuthStore();
   const { chatRooms, totalUnreadCount, getChatRooms } = useChatStore();
   const { trips, isLoading, getTrips, getUserTrips } = useTripStore();
+  const { receivedRequests, sentRequests, getUserRequests } = useRequestStore();
+  const { notifications, unreadCount, getUserNotifications } = useNotificationStore();
 
   // Load data on mount
   useEffect(() => {
@@ -18,8 +22,10 @@ export function DashboardPage() {
       getChatRooms(user.id);
       getUserTrips(user.id); // Load user's trips
       getTrips({}, 1); // Load recent trips for matches
+      getUserRequests(user.id, 'all'); // Load user's requests
+      getUserNotifications(user.id); // Load notifications
     }
-  }, [user?.id, getChatRooms, getUserTrips, getTrips]);
+  }, [user?.id, getChatRooms, getUserTrips, getTrips, getUserRequests, getUserNotifications]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -35,7 +41,7 @@ export function DashboardPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <Card>
             <CardHeader
               title="Your Trips"
@@ -44,10 +50,10 @@ export function DashboardPage() {
             <div className="text-center py-8">
               {isLoading ? (
                 <p className="text-gray-500">Loading trips...</p>
-              ) : trips.filter(trip => trip.driver_id === user?.id).length > 0 ? (
+              ) : trips.filter(trip => trip.user_id === user?.id).length > 0 ? (
                 <>
                   <p className="text-gray-600 font-medium text-lg">
-                    {trips.filter(trip => trip.driver_id === user?.id).length}
+                    {trips.filter(trip => trip.user_id === user?.id).length}
                   </p>
                   <p className="text-gray-500 text-sm">Active trips</p>
                   <Link 
@@ -73,16 +79,62 @@ export function DashboardPage() {
 
           <Card>
             <CardHeader
+              title="Trip Requests"
+              subtitle="Manage join requests and applications"
+            />
+            <div className="text-center py-8">
+              {receivedRequests.filter(req => req.status === 'PENDING').length > 0 ? (
+                <>
+                  <p className="text-orange-600 font-medium text-lg">
+                    {receivedRequests.filter(req => req.status === 'PENDING').length}
+                  </p>
+                  <p className="text-gray-500 text-sm">Pending requests</p>
+                  <Link 
+                    to={ROUTES.REQUESTS}
+                    className="inline-block mt-2 text-orange-600 hover:text-orange-700 font-medium hover:underline"
+                  >
+                    Review requests
+                  </Link>
+                </>
+              ) : sentRequests.length > 0 ? (
+                <>
+                  <p className="text-blue-600 font-medium text-lg">
+                    {sentRequests.length}
+                  </p>
+                  <p className="text-gray-500 text-sm">Sent requests</p>
+                  <Link 
+                    to={ROUTES.REQUESTS}
+                    className="inline-block mt-2 text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                  >
+                    View status
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-500">No requests</p>
+                  <Link 
+                    to={ROUTES.TRIPS}
+                    className="inline-block mt-2 text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                  >
+                    Find trips to join
+                  </Link>
+                </>
+              )}
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader
               title="Available Trips"
               subtitle="Find and join compatible rides"
             />
             <div className="text-center py-8">
               {isLoading ? (
                 <p className="text-gray-500">Loading available trips...</p>
-              ) : trips.filter(trip => trip.driver_id !== user?.id).length > 0 ? (
+              ) : trips.filter(trip => trip.user_id !== user?.id).length > 0 ? (
                 <>
                   <p className="text-gray-600 font-medium text-lg">
-                    {trips.filter(trip => trip.driver_id !== user?.id).length}
+                    {trips.filter(trip => trip.user_id !== user?.id).length}
                   </p>
                   <p className="text-gray-500 text-sm">Available trips</p>
                   <Link 
@@ -145,7 +197,7 @@ export function DashboardPage() {
               title="Quick Actions"
               subtitle="Get started with your carpooling journey"
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               <Link to={ROUTES.CREATE_TRIP}>
                 <Button className="w-full h-16 text-left justify-start bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200">
                   <div>
@@ -164,6 +216,22 @@ export function DashboardPage() {
                 </Button>
               </Link>
               
+              <Link to={ROUTES.REQUESTS}>
+                <Button className="w-full h-16 text-left justify-start bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200">
+                  <div className="flex items-center justify-between w-full">
+                    <div>
+                      <div className="font-medium">Requests</div>
+                      <div className="text-xs text-orange-600">Join applications</div>
+                    </div>
+                    {receivedRequests.filter(req => req.status === 'PENDING').length > 0 && (
+                      <Badge color="orange" size="sm">
+                        {receivedRequests.filter(req => req.status === 'PENDING').length}
+                      </Badge>
+                    )}
+                  </div>
+                </Button>
+              </Link>
+              
               <Link to={ROUTES.MY_TRIPS}>
                 <Button className="w-full h-16 text-left justify-start bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200">
                   <div>
@@ -174,10 +242,33 @@ export function DashboardPage() {
               </Link>
               
               <Link to={ROUTES.CHAT}>
-                <Button className="w-full h-16 text-left justify-start bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200">
-                  <div>
-                    <div className="font-medium">Messages</div>
-                    <div className="text-xs text-orange-600">Chat with travelers</div>
+                <Button className="w-full h-16 text-left justify-start bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200">
+                  <div className="flex items-center justify-between w-full">
+                    <div>
+                      <div className="font-medium">Messages</div>
+                      <div className="text-xs text-indigo-600">Chat with travelers</div>
+                    </div>
+                    {totalUnreadCount > 0 && (
+                      <Badge color="indigo" size="sm">
+                        {totalUnreadCount}
+                      </Badge>
+                    )}
+                  </div>
+                </Button>
+              </Link>
+
+              <Link to={ROUTES.NOTIFICATIONS}>
+                <Button className="w-full h-16 text-left justify-start bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border border-yellow-200">
+                  <div className="flex items-center justify-between w-full">
+                    <div>
+                      <div className="font-medium">Notifications</div>
+                      <div className="text-xs text-yellow-600">Updates & alerts</div>
+                    </div>
+                    {unreadCount > 0 && (
+                      <Badge color="yellow" size="sm">
+                        {unreadCount}
+                      </Badge>
+                    )}
                   </div>
                 </Button>
               </Link>
