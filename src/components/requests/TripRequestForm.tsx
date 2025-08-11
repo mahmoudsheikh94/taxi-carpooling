@@ -6,7 +6,7 @@ import { Button, Input, TextArea, Select } from '../ui';
 import { PlacesAutocomplete } from '../maps';
 import { useRequestStore } from '../../store/requestStore';
 import { useAuthStore } from '../../store/authStore';
-import { useToast } from '../ui/Toast';
+import { useToast } from '../../hooks/useToast';
 import type { Trip, LocationData } from '../../types';
 
 const requestSchema = z.object({
@@ -50,6 +50,23 @@ export function TripRequestForm({
   const { createRequest, isSending } = useRequestStore();
   const { showToast } = useToast();
   const [useCustomLocations, setUseCustomLocations] = useState(false);
+  
+  // Calculate available seats with fallback and safety checks
+  const calculateAvailableSeats = () => {
+    // Direct available seats if provided
+    if (typeof trip.available_seats === 'number' && trip.available_seats >= 0) {
+      return trip.available_seats;
+    }
+    
+    // Calculate from max and current passengers with fallbacks
+    const maxPassengers = trip.max_passengers || 4;
+    const currentPassengers = trip.current_passengers || 0;
+    const calculated = Math.max(0, maxPassengers - currentPassengers);
+    
+    return calculated;
+  };
+
+  const availableSeats = calculateAvailableSeats();
 
   const {
     register,
@@ -72,18 +89,30 @@ export function TripRequestForm({
   const watchedMessage = watch('message');
 
   const onSubmit = async (data: RequestFormData) => {
+    console.log('🚀 TripRequestForm onSubmit:', { data, trip, user: user?.id });
+    
     if (!user?.id || !trip.user_id) {
+      console.log('❌ Authentication required');
       showToast('Authentication required', 'error');
       return;
     }
 
     if (user.id === trip.user_id) {
+      console.log('❌ Cannot request to join your own trip');
       showToast('Cannot request to join your own trip', 'error');
       return;
     }
 
-    if (data.seats_requested > trip.available_seats) {
-      showToast(`Only ${trip.available_seats} seats available`, 'error');
+    console.log('💺 Available seats check:', {
+      requested: data.seats_requested,
+      available: availableSeats,
+      fromTrip: trip.available_seats,
+      maxPassengers: trip.max_passengers,
+      currentPassengers: trip.current_passengers
+    });
+
+    if (data.seats_requested > availableSeats) {
+      showToast(`Only ${availableSeats} seats available`, 'error');
       return;
     }
 
@@ -127,7 +156,7 @@ export function TripRequestForm({
             <span className="font-medium">To:</span> {trip.destination}
           </p>
           <p className="mb-1">
-            <span className="font-medium">Available seats:</span> {trip.available_seats}
+            <span className="font-medium">Available seats:</span> {availableSeats}
           </p>
           <p>
             <span className="font-medium">Driver:</span> {trip.user?.name}
@@ -146,11 +175,15 @@ export function TripRequestForm({
             error={errors.seats_requested?.message}
             disabled={isSending}
           >
-            {Array.from({ length: Math.min(trip.available_seats, 4) }, (_, i) => (
-              <option key={i + 1} value={i + 1}>
-                {i + 1} seat{i > 0 ? 's' : ''}
-              </option>
-            ))}
+            {availableSeats > 0 ? (
+              Array.from({ length: Math.min(availableSeats, 4) }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {i + 1} seat{i > 0 ? 's' : ''}
+                </option>
+              ))
+            ) : (
+              <option value="" disabled>No seats available</option>
+            )}
           </Select>
         </div>
 

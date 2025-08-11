@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadGoogleMapsApi, isGoogleMapsAvailable } from '../../services/maps';
 import { Input } from '../ui';
-import type { LocationFormData } from '../../utils/validations';
+import type { LocationData } from '../../types';
 
 interface PlacesAutocompleteProps {
-  value: string;
-  onChange: (value: string, location?: LocationFormData) => void;
+  value?: string;
+  onChange?: (value: string, location?: LocationData) => void;
+  onPlaceSelect?: (location: LocationData) => void; // New callback for location selection
   onError?: (error: string) => void;
   placeholder?: string;
   error?: string;
@@ -14,11 +15,13 @@ interface PlacesAutocompleteProps {
   className?: string;
   countries?: string[];
   types?: string[];
+  disabled?: boolean;
 }
 
 export function PlacesAutocomplete({
-  value,
+  value = '',
   onChange,
+  onPlaceSelect,
   onError,
   placeholder = 'Enter a location',
   error,
@@ -27,11 +30,13 @@ export function PlacesAutocomplete({
   className,
   countries = [],
   types = ['geocode'],
+  disabled = false,
 }: PlacesAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasGoogleMaps, setHasGoogleMaps] = useState(true);
+  const [internalValue, setInternalValue] = useState(value);
 
   useEffect(() => {
     // Skip initialization if Google Maps is not available
@@ -42,11 +47,22 @@ export function PlacesAutocomplete({
     }
 
     const initAutocomplete = async () => {
-      if (!inputRef.current) return;
+      if (!inputRef.current) {
+        console.warn('PlacesAutocomplete: Input ref not available');
+        return;
+      }
 
       try {
         setIsLoading(true);
         await loadGoogleMapsApi();
+
+        // Verify that the input element is still valid
+        if (!inputRef.current || !(inputRef.current instanceof HTMLInputElement)) {
+          console.error('PlacesAutocomplete: Invalid input element reference');
+          setHasGoogleMaps(false);
+          onError?.('Location autocomplete initialization failed - input element not found');
+          return;
+        }
 
         const options: google.maps.places.AutocompleteOptions = {
           types,
@@ -77,7 +93,7 @@ export function PlacesAutocomplete({
             return;
           }
 
-          const location: LocationFormData = {
+          const location: LocationData = {
             address: place.formatted_address || '',
             coordinates: {
               lat: place.geometry.location.lat(),
@@ -88,7 +104,12 @@ export function PlacesAutocomplete({
             types: place.types,
           };
 
-          onChange(place.formatted_address || '', location);
+          const formattedAddress = place.formatted_address || '';
+          setInternalValue(formattedAddress);
+          
+          // Call both callbacks if they exist
+          onChange?.(formattedAddress, location);
+          onPlaceSelect?.(location);
         });
 
         autocompleteRef.current = autocomplete;
@@ -101,18 +122,29 @@ export function PlacesAutocomplete({
       }
     };
 
-    initAutocomplete();
-
+    // Add a small delay to ensure DOM is fully ready
+    const timeoutId = setTimeout(() => {
+      initAutocomplete();
+    }, 100);
+    
     return () => {
+      clearTimeout(timeoutId);
       if (autocompleteRef.current) {
         google.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
     };
   }, [countries, types, onError]);
 
+  // Update internal value when prop changes
+  useEffect(() => {
+    setInternalValue(value || '');
+  }, [value]);
+
   // Handle manual input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value);
+    const newValue = e.target.value;
+    setInternalValue(newValue);
+    onChange?.(newValue);
   };
 
   return (
@@ -120,7 +152,7 @@ export function PlacesAutocomplete({
       <Input
         ref={inputRef}
         label={label}
-        value={value}
+        value={internalValue}
         onChange={handleInputChange}
         placeholder={
           isLoading 
@@ -131,7 +163,7 @@ export function PlacesAutocomplete({
         }
         error={error}
         required={required}
-        disabled={isLoading}
+        disabled={isLoading || disabled}
         autoComplete="off"
       />
     </div>
